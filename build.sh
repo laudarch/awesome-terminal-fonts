@@ -1,4 +1,27 @@
 #!/bin/sh
+# Credits:
+# - http://stackoverflow.com/a/3232082
+# - http://stackoverflow.com/a/5195741
+
+continue_script () {
+    # call with a prompt string or use a default
+    # 
+    read -r -p "${1:-Continue? [y/N]} " response
+    case $response in
+        [yY][eE][sS]|[yY]) 
+            true
+            ;;
+        *)
+            false
+            ;;
+    esac
+}
+
+test_command () {
+    "$@"
+    local status=$?
+    return $status
+}
 
 cd "$(dirname "$0")"
 
@@ -9,7 +32,17 @@ echo 'build all symbols fonts...'
 cp ./fonts/pomicons-regular.ttf ./build
 cp ./fonts/fontawesome-regular.ttf ./build
 
-./scripts/fu-relocate ./fonts/octicons-regular.ttf --save-as='.work/octicons-regular-relocated.ttf' --to='0xf200' 2> /dev/null
+
+if test_command ./scripts/fu-relocate ./fonts/octicons-regular.ttf --save-as='.work/octicons-regular-relocated.ttf' --to='0xf200' 2>&1 | awk '{print "[scripts/fu-relocate.py] " $0}'
+then 
+    echo $(2>&1 | awk '{print "[FAILED scripts/fu-relocate.py] " $0}')
+    if ! continue_script "./fonts/octicons-regular.ttf failed to build. Continue? [y/N]"
+    then
+        echo "Exited."
+        exit 1
+    fi
+fi
+
 cp ./.work/octicons-regular-relocated.ttf ./build/octicons-regular.ttf
 
 
